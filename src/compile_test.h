@@ -27,16 +27,16 @@ struct GrowthModule : public BaseBiologyModule {
     auto* random = TSimulation::GetActive()->GetRandom();
 
 
-    if (cell->GetDiameter() < 8) {
+    //if (cell->GetDiameter() < 8) {
           //cell->ChangeVolume(400);
 
           array<double, 3> cell_movements{random->Uniform(-2, 2), random->Uniform(-2, 2), random->Uniform(-2, 2)}; // create an array of 3 random numbers between -2 and 2
           cell->UpdatePosition(cell_movements); // update the cell mass location, ie move the cell
           // cell->SetPosition(cell->GetPosition()); // set the cell position
-        }
+        //
       } // end Run
 
-  ClassDefNV(GrowthModule, 1);
+  //ClassDefNV(GrowthModule, 1);
 };
 
 // Define compile time parameter
@@ -54,7 +54,7 @@ inline int Simulate(int argc, const char** argv) {
   auto* param = simulation.GetParam();
   auto* random = simulation.GetRandom();
 
-  size_t nb_of_cells = 5;  // number of cells in the simulation
+  size_t nb_of_cells = 10;  // number of cells in the simulation
   double x_coord, y_coord, z_coord;
 
   param->bound_space_ = true;
@@ -85,12 +85,13 @@ inline int Simulate(int argc, const char** argv) {
 
     cells->push_back(cell);  // put the created cell in our cells structure
   }
+  cells->Commit();
 
 
 
 
   // Run simulation for one timestep
-  simulation.GetScheduler()->Simulate(50);
+  simulation.GetScheduler()->Simulate(3000);
 
   std::cout << "Simulation completed successfully!" << std::endl;
   return 0;

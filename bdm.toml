@@ -1,5 +1,6 @@
 [simulation]
 run_mechanical_interactions = true
+bound_space = true
 
 [visualization]
 live = false
