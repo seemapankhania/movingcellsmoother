@@ -17,6 +17,24 @@
 #include "biodynamo.h"
 namespace bdm {
 
+  // Define my custom cell MyCell, which extends Cell by adding extra data members: cell_colour
+BDM_SIM_OBJECT(MyCell, bdm::Cell) { // our object extends the Cell object
+  BDM_SIM_OBJECT_HEADER(MyCellExt, 1, cell_color_); // create the header with our new data member
+
+  public:
+    MyCellExt() {}
+    MyCellExt(const std::array<double, 3>& position) : Base(position) {} // our creator
+    // getter and setter for our new data member
+    void SetCellColor(int cellcolor) { cell_color_[kIdx] = cellcolor; }
+    int GetCellColor() { return cell_color_[kIdx]; }
+    int* GetCellColorPtr() { return cell_color_.data(); }
+
+  private:
+  // private data can only be accessed by public function and not directly
+    vec<int> cell_color_; // declare our new data member and define its type
+};
+
+
 using namespace std;
 
 struct GrowthModule : public BaseBiologyModule {
@@ -33,7 +51,8 @@ struct GrowthModule : public BaseBiologyModule {
           array<double, 3> cell_movements{random->Uniform(-2, 2), random->Uniform(-2, 2), random->Uniform(-2, 2)}; // create an array of 3 random numbers between -2 and 2
           cell->UpdatePosition(cell_movements); // update the cell mass location, ie move the cell
           // cell->SetPosition(cell->GetPosition()); // set the cell position
-        //
+          //cell->SetCellcolour(cell->GetCellcolour());
+
       } // end Run
 
   //ClassDefNV(GrowthModule, 1);
@@ -43,10 +62,8 @@ struct GrowthModule : public BaseBiologyModule {
 template <typename Backend>
 struct CompileTimeParam : public DefaultCompileTimeParam<Backend> {
   using BiologyModules = Variant<GrowthModule>;  // add GrowthModule
-  // using AtomicTypes = VariadicTypedef<MyCell>;   // use MyCell object
+  using AtomicTypes = VariadicTypedef<MyCell>;   // use MyCell object
 };
-
-
 
 inline int Simulate(int argc, const char** argv) {
   Simulation<> simulation(argc, argv);
@@ -54,15 +71,16 @@ inline int Simulate(int argc, const char** argv) {
   auto* param = simulation.GetParam();
   auto* random = simulation.GetRandom();
 
+  #pragma omp parallel
+   simulation.GetRandom()->SetSeed(omp_get_thread_num()); //these 2 lines initialise the random number generator so that the cells have different thread values
   size_t nb_of_cells = 10;  // number of cells in the simulation
   double x_coord, y_coord, z_coord;
 
   param->bound_space_ = true;
   param->min_bound_ = 0;
   param->max_bound_ = 100;  // cube of 100*100*100
-
   // create a structure to contain cells
-  auto* cells = rm->template Get<Cell>();
+  auto* cells = rm->template Get<MyCell>();
   // allocate the correct number of cell in our cells structure before
   // cell creation
   cells->reserve(nb_of_cells);
@@ -75,23 +93,21 @@ inline int Simulate(int argc, const char** argv) {
     z_coord = random->Uniform(param->min_bound_, param->max_bound_);
 
     // creating the cell at position x, y, z
-    Cell cell({x_coord, y_coord, z_coord});
+    MyCell cell({x_coord, y_coord, z_coord});
     // set cell parameters
     cell.SetDiameter(7);
     cell.AddBiologyModule(GrowthModule());
+    cell.SetCellColor(4);
 
+    //cell.SetCellColor(static_cast<int>((y_coord / param->max_bound_ * 6)));
     // will vary from 0 to 5. so 6 different layers depending on y_coord
-    // cell.SetCellColour((int)(y_coord / param->max_bound_ * 6));
+    // cell.SetCellcolour((int)(y_coord / param->max_bound_ * 6));
 
     cells->push_back(cell);  // put the created cell in our cells structure
   }
   cells->Commit();
-
-
-
-
   // Run simulation for one timestep
-  simulation.GetScheduler()->Simulate(3000);
+  simulation.GetScheduler()->Simulate(300);
 
   std::cout << "Simulation completed successfully!" << std::endl;
   return 0;
